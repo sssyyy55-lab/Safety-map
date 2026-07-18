@@ -58,7 +58,6 @@
   #map{flex:1;position:relative;z-index:1;background:#0e1013;}
   .leaflet-container{font-family:inherit;}
 
-  /* 追加モードのバナー */
   #modeBanner{
     position:absolute;top:10px;left:50%;transform:translateX(-50%);
     z-index:1100;padding:8px 16px;border-radius:999px;
@@ -98,12 +97,13 @@
   .leaflet-popup-tip{background:var(--asphalt-2);}
   .leaflet-popup-content{margin:12px 14px;font-size:13px;}
   .popup-title{font-weight:800;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+  .popup-sub{font-size:11px;color:var(--muted);margin:-4px 0 8px;}
   .popup-del{
     width:100%;padding:8px;border:none;border-radius:8px;cursor:pointer;
     background:#3A2224;color:#FF8A8A;font-weight:700;font-size:12px;
   }
 
-  /* ===== 接近アラート表示 ===== */
+  /* ===== 接近アラート ===== */
   #alertCard{
     position:absolute;left:12px;right:12px;bottom:12px;z-index:1100;
     border-radius:14px;padding:14px 16px;
@@ -148,9 +148,10 @@
     padding:18px 18px calc(22px + env(safe-area-inset-bottom));
     transform:translateY(110%);transition:transform .28s ease;
     box-shadow:0 -8px 30px rgba(0,0,0,.6);
+    max-height:80%;overflow-y:auto;
   }
   #settings.open{transform:translateY(0);}
-  #settings h2{font-size:15px;font-weight:800;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;}
+  #settings h2{font-size:15px;font-weight:800;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--asphalt-2);padding:4px 0;}
   #settings h2 button{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;}
   .set-row{margin-bottom:16px;}
   .set-row label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;}
@@ -171,6 +172,28 @@
   .voice-toggle{display:flex;align-items:center;justify-content:space-between;}
   .voice-toggle .chip{flex:0 0 88px;}
 
+  /* データ取込セクション */
+  .import-box{
+    border:1.5px solid #3A4048;border-radius:12px;padding:12px;margin-bottom:14px;
+    background:var(--asphalt);
+  }
+  .import-box h3{font-size:13px;font-weight:800;margin-bottom:4px;}
+  .import-box p{font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:10px;}
+  .import-btn{
+    width:100%;padding:11px;border:none;border-radius:10px;cursor:pointer;
+    font-family:inherit;font-size:13px;font-weight:800;margin-bottom:8px;
+  }
+  .import-btn.stopcsv{background:var(--red);color:#fff;}
+  .import-btn.acccsv{background:var(--yellow);color:var(--asphalt);}
+  .import-btn.export{background:var(--blue);color:#fff;}
+  .import-btn.clearimp{background:#3A2224;color:#FF8A8A;margin-bottom:0;}
+  #importStatus{
+    font-size:12px;font-weight:700;color:#7CE0A0;line-height:1.5;
+    min-height:16px;margin-top:2px;white-space:pre-line;
+  }
+  #importCounts{font-size:11px;color:var(--muted);margin-top:6px;}
+  input[type=file]{display:none;}
+
   #toast{
     position:absolute;top:56px;left:50%;transform:translateX(-50%);
     z-index:1400;background:rgba(20,22,25,.92);color:var(--lane);
@@ -188,7 +211,7 @@
     <div class="brand-sign"><span>!</span></div>
     <div>
       <h1>セーフティマップ</h1>
-      <small>KIKEN CHITEN ALERT</small>
+      <small>TOTTORI EDITION</small>
     </div>
   </div>
   <div id="gpsStatus"><span class="dot"></span><span id="gpsStatusText">GPS 停止中</span></div>
@@ -214,6 +237,7 @@
 
 <div id="settings">
   <h2>設定 <button id="btnCloseSettings">✕</button></h2>
+
   <div class="set-row">
     <label>アラート距離(この距離まで近づくと音声で知らせます)</label>
     <div class="chip-group" id="distChips">
@@ -227,9 +251,26 @@
     <label style="margin:0">音声アナウンス</label>
     <button class="chip sel" id="btnVoice">ON</button>
   </div>
-  <div class="set-actions">
+  <div class="set-actions" style="margin-bottom:16px;">
     <button id="btnTestVoice">🔊 音声テスト</button>
-    <button id="btnClearAll">🗑 全地点を削除</button>
+    <button id="btnClearAll">🗑 手動地点を削除</button>
+  </div>
+
+  <div class="import-box">
+    <h3>📂 公式データの取り込み(鳥取県)</h3>
+    <p>大きなファイルのため<b>パソコンでの操作を推奨</b>します。読み込むと鳥取県内のデータだけを自動抽出します。</p>
+
+    <button class="import-btn stopcsv" id="btnImportStop">🛑 一時停止CSVを読み込む(JARTIC)</button>
+    <input type="file" id="fileStop" accept=".csv,text/csv,text/plain">
+
+    <button class="import-btn acccsv" id="btnImportAcc">⚠️ 事故CSVを読み込む(警察庁 本票)</button>
+    <input type="file" id="fileAcc" accept=".csv,text/csv,text/plain">
+
+    <div id="importStatus"></div>
+    <div id="importCounts"></div>
+
+    <button class="import-btn export" id="btnExport" style="margin-top:10px;">💾 共有データを書き出す (spots-data.json)</button>
+    <button class="import-btn clearimp" id="btnClearImport">🗑 取込データのみ削除</button>
   </div>
 </div>
 
@@ -239,25 +280,35 @@
 <script>
 "use strict";
 
-/* ============ 状態 ============ */
-const LS_KEY = "safetyMapPoints_v1";
+/* ============ 定数 ============ */
+const LS_KEY = "safetyMapPoints_v1";      // 手動登録地点
+const LS_IMP = "safetyMapImported_v1";    // 取込地点
+const LS_DEL = "safetyMapDeleted_v1";     // 取込地点のうち削除したID
 const LS_SET = "safetyMapSettings_v1";
-let points = [];            // {id, type:'accident'|'stop', lat, lng}
-let markers = {};           // id -> Leaflet marker
-let addMode = null;         // null | 'accident' | 'stop'
+// 鳥取県のおおよその範囲(隣県との境界付近を少し含みます)
+const BBOX = { latMin: 35.00, latMax: 35.65, lngMin: 133.10, lngMax: 134.55 };
+const MAX_IMPORT = 30000;
+
+/* ============ 状態 ============ */
+let points = [];        // 手動 {id,type,lat,lng}
+let imported = [];      // 取込 {id,type,lat,lng,n?}  n=事故件数
+let deletedIds = {};    // 取込のうち削除したもの
+let markers = {};       // id -> layer
+let addMode = null;
 let watchId = null;
 let meMarker = null, meCircle = null;
-let announced = {};         // id -> true(ゾーン内で通知済み)
+let announced = {};
 let settings = { dist: 100, voice: true };
 let firstFix = true;
 
 /* ============ 地図 ============ */
-const map = L.map("map", { zoomControl: false }).setView([35.681, 139.767], 15);
+const map = L.map("map", { zoomControl: false, preferCanvas: true }).setView([35.5011, 134.2351], 13); // 鳥取市
 L.control.zoom({ position: "topright" }).addTo(map);
 L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
 }).addTo(map);
+const canvasRenderer = L.canvas({ padding: 0.4 });
 
 /* ============ アイコン ============ */
 function makeIcon(type) {
@@ -276,61 +327,112 @@ const meIcon = L.divIcon({ className: "", iconSize: [18, 18], iconAnchor: [9, 9]
 
 /* ============ 保存・読込 ============ */
 function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(points)); } catch(e){} }
+function saveImported() {
+  try { localStorage.setItem(LS_IMP, JSON.stringify(imported)); }
+  catch(e){ toast("保存容量を超えました。取込データが多すぎます"); }
+}
+function saveDeleted() { try { localStorage.setItem(LS_DEL, JSON.stringify(deletedIds)); } catch(e){} }
 function saveSettings() { try { localStorage.setItem(LS_SET, JSON.stringify(settings)); } catch(e){} }
-function load() {
+
+function loadAll() {
   try {
     const p = JSON.parse(localStorage.getItem(LS_KEY) || "[]");
-    if (Array.isArray(p)) p.forEach(pt => { if (pt && pt.id && pt.lat != null) addMarker(pt, false); });
+    if (Array.isArray(p)) p.forEach(pt => { if (valid(pt)) { points.push(pt); drawPoint(pt); } });
+  } catch(e){}
+  try { deletedIds = JSON.parse(localStorage.getItem(LS_DEL) || "{}") || {}; } catch(e){}
+  try {
+    const im = JSON.parse(localStorage.getItem(LS_IMP) || "[]");
+    if (Array.isArray(im)) im.forEach(pt => { if (valid(pt) && !deletedIds[pt.id]) { imported.push(pt); drawPoint(pt); } });
   } catch(e){}
   try {
     const s = JSON.parse(localStorage.getItem(LS_SET) || "{}");
     if (s && typeof s === "object") settings = Object.assign(settings, s);
   } catch(e){}
-  // 設定UIに反映
   document.querySelectorAll("#distChips .chip").forEach(c => {
     c.classList.toggle("sel", Number(c.dataset.d) === settings.dist);
   });
   updateVoiceBtn();
+  updateCounts();
+}
+function valid(pt){ return pt && pt.id && typeof pt.lat === "number" && typeof pt.lng === "number" && (pt.type === "stop" || pt.type === "accident"); }
+
+/* ============ 共有データ(spots-data.json)の自動読込 ============ */
+async function loadSharedData() {
+  if (location.protocol !== "http:" && location.protocol !== "https:") return;
+  try {
+    const res = await fetch("spots-data.json", { cache: "no-store" });
+    if (!res.ok) return;
+    const data = await res.json();
+    const list = Array.isArray(data) ? data : (data.points || []);
+    const have = {};
+    imported.forEach(p => have[p.id] = 1);
+    points.forEach(p => have[p.id] = 1);
+    let added = 0;
+    for (const pt of list) {
+      if (!valid(pt) || have[pt.id] || deletedIds[pt.id]) continue;
+      imported.push(pt); drawPoint(pt); have[pt.id] = 1; added++;
+    }
+    if (added > 0) {
+      saveImported(); updateCounts();
+      toast("共有データを読み込みました(" + added + "件)");
+    }
+  } catch(e){ /* ファイルが無ければ何もしない */ }
 }
 
-/* ============ マーカー追加・削除 ============ */
-function addMarker(pt, doSave = true) {
-  if (doSave) points.push(pt);
-  else points = points.includes(pt) ? points : [...points, pt];
-
-  const m = L.marker([pt.lat, pt.lng], { icon: makeIcon(pt.type) }).addTo(map);
+/* ============ 描画 ============ */
+function drawPoint(pt) {
+  let layer;
+  const isImported = pt.id.startsWith("j") || pt.id.startsWith("a");
+  if (isImported) {
+    // 取込地点: 軽量な円マーカー(数千件でも軽い)
+    layer = L.circleMarker([pt.lat, pt.lng], {
+      renderer: canvasRenderer,
+      radius: pt.type === "stop" ? 6 : 8,
+      color: "#1A1D21", weight: 1.5,
+      fillColor: pt.type === "stop" ? "#E03131" : "#FFC400",
+      fillOpacity: 0.9
+    }).addTo(map);
+  } else {
+    layer = L.marker([pt.lat, pt.lng], { icon: makeIcon(pt.type) }).addTo(map);
+  }
   const label = pt.type === "accident" ? "⚠️ 事故多発地点" : "🛑 一時停止";
+  const sub = pt.id.startsWith("j") ? "出典: JARTIC 交通規制情報"
+            : pt.id.startsWith("a") ? "出典: 警察庁 事故統計" + (pt.n ? "(" + pt.n + "件)" : "")
+            : "手動登録";
   const div = document.createElement("div");
-  div.innerHTML = '<div class="popup-title">' + label + '</div>';
+  div.innerHTML = '<div class="popup-title">' + label + '</div><div class="popup-sub">' + sub + '</div>';
   const del = document.createElement("button");
   del.className = "popup-del";
   del.textContent = "この地点を削除";
-  del.onclick = () => removeMarker(pt.id);
+  del.onclick = () => removePoint(pt.id);
   div.appendChild(del);
-  m.bindPopup(div);
-  markers[pt.id] = m;
-  if (doSave) save();
+  layer.bindPopup(div);
+  markers[pt.id] = layer;
 }
 
-function removeMarker(id) {
+function removePoint(id) {
   const m = markers[id];
   if (m) { map.removeLayer(m); delete markers[id]; }
+  const before = points.length + imported.length;
   points = points.filter(p => p.id !== id);
+  imported = imported.filter(p => p.id !== id);
+  if (id.startsWith("j") || id.startsWith("a")) { deletedIds[id] = 1; saveDeleted(); saveImported(); }
+  else save();
   delete announced[id];
-  save();
-  toast("地点を削除しました");
+  if (points.length + imported.length < before) toast("地点を削除しました");
+  updateCounts();
 }
 
-/* ============ 地図タップで登録 ============ */
+function allPoints(){ return imported.length ? points.concat(imported) : points; }
+
+/* ============ 地図タップで手動登録 ============ */
 map.on("click", e => {
   if (!addMode) return;
   const pt = {
     id: "p" + Date.now() + Math.floor(Math.random() * 1000),
-    type: addMode,
-    lat: e.latlng.lat,
-    lng: e.latlng.lng
+    type: addMode, lat: e.latlng.lat, lng: e.latlng.lng
   };
-  addMarker(pt);
+  points.push(pt); drawPoint(pt); save(); updateCounts();
   toast(addMode === "accident" ? "⚠️ 事故多発地点を登録しました" : "🛑 一時停止を登録しました");
 });
 
@@ -338,7 +440,6 @@ map.on("click", e => {
 const btnAccident = document.getElementById("btnAccident");
 const btnStop = document.getElementById("btnStop");
 const banner = document.getElementById("modeBanner");
-
 function setMode(mode) {
   addMode = (addMode === mode) ? null : mode;
   btnAccident.classList.toggle("active", addMode === "accident");
@@ -354,14 +455,10 @@ btnStop.onclick = () => setMode("stop");
 const btnGps = document.getElementById("btnGps");
 const gpsStatus = document.getElementById("gpsStatus");
 const gpsStatusText = document.getElementById("gpsStatusText");
-
-btnGps.onclick = () => {
-  if (watchId != null) stopGps(); else startGps();
-};
+btnGps.onclick = () => { if (watchId != null) stopGps(); else startGps(); };
 
 function startGps() {
   if (!navigator.geolocation) { toast("この端末はGPSに対応していません"); return; }
-  // 音声はユーザー操作で有効化される(ここで無音発話してアンロック)
   unlockVoice();
   firstFix = true;
   watchId = navigator.geolocation.watchPosition(onPos, onGpsError, {
@@ -372,7 +469,6 @@ function startGps() {
   gpsStatus.classList.add("on");
   gpsStatusText.textContent = "GPS 取得中…";
 }
-
 function stopGps() {
   if (watchId != null) navigator.geolocation.clearWatch(watchId);
   watchId = null;
@@ -382,21 +478,14 @@ function stopGps() {
   gpsStatusText.textContent = "GPS 停止中";
   hideAlert();
 }
-
 function onGpsError(err) {
   stopGps();
-  if (err.code === 1) {
-    toast("位置情報が許可されていません。ブラウザの設定をご確認ください");
-  } else {
-    toast("位置情報を取得できませんでした");
-  }
+  toast(err.code === 1 ? "位置情報が許可されていません。ブラウザの設定をご確認ください" : "位置情報を取得できませんでした");
 }
-
 function onPos(pos) {
   const lat = pos.coords.latitude, lng = pos.coords.longitude;
   const acc = pos.coords.accuracy || 0;
   gpsStatusText.textContent = "GPS 追跡中(±" + Math.round(acc) + "m)";
-
   if (!meMarker) {
     meMarker = L.marker([lat, lng], { icon: meIcon, zIndexOffset: 1000 }).addTo(map);
     meCircle = L.circle([lat, lng], { radius: acc, color: "#4DA3FF", weight: 1, fillOpacity: 0.08 }).addTo(map);
@@ -405,38 +494,35 @@ function onPos(pos) {
     meCircle.setLatLng([lat, lng]).setRadius(acc);
   }
   if (firstFix) { map.setView([lat, lng], 16); firstFix = false; }
-
   checkProximity(lat, lng);
 }
 
-/* ============ 距離計算(ハバサイン) ============ */
+/* ============ 距離計算 ============ */
 function distanceM(lat1, lng1, lat2, lng2) {
   const R = 6371000, rad = Math.PI / 180;
   const dLat = (lat2 - lat1) * rad, dLng = (lng2 - lng1) * rad;
-  const a = Math.sin(dLat/2)**2 +
-            Math.cos(lat1*rad) * Math.cos(lat2*rad) * Math.sin(dLng/2)**2;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*rad) * Math.cos(lat2*rad) * Math.sin(dLng/2)**2;
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
-/* ============ 接近チェック&アナウンス ============ */
+/* ============ 接近チェック ============ */
 function checkProximity(lat, lng) {
   let nearest = null, nearestD = Infinity;
-
-  for (const pt of points) {
+  const list = allPoints();
+  for (const pt of list) {
+    // 高速化: 明らかに遠い地点はスキップ(緯度経度の差でざっくり判定)
+    if (Math.abs(pt.lat - lat) > 0.01 || Math.abs(pt.lng - lng) > 0.012) { 
+      if (announced[pt.id]) delete announced[pt.id];
+      continue; 
+    }
     const d = distanceM(lat, lng, pt.lat, pt.lng);
-
     if (d <= settings.dist) {
-      if (!announced[pt.id]) {
-        announced[pt.id] = true;
-        announce(pt, d);
-      }
+      if (!announced[pt.id]) { announced[pt.id] = true; announce(pt, d); }
       if (d < nearestD) { nearestD = d; nearest = pt; }
     } else if (d > settings.dist * 1.5) {
-      // ゾーンから十分離れたらリセット(再接近時にまた鳴る)
       delete announced[pt.id];
     }
   }
-
   if (nearest) showAlert(nearest, nearestD);
   else hideAlert();
 }
@@ -449,19 +535,14 @@ function announce(pt, d) {
   speak(msg);
   if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
 }
-
-function roundDist(d) {
-  if (d < 30) return "20";
-  return String(Math.round(d / 10) * 10);
-}
+function roundDist(d) { return d < 30 ? "20" : String(Math.round(d / 10) * 10); }
 
 /* ============ アラート表示 ============ */
 const alertCard = document.getElementById("alertCard");
 function showAlert(pt, d) {
   alertCard.className = pt.type;
   document.getElementById("alertIcon").textContent = pt.type === "accident" ? "⚠️" : "🛑";
-  document.getElementById("alertMsg").textContent =
-    pt.type === "accident" ? "事故多発地点 接近中" : "一時停止 接近中";
+  document.getElementById("alertMsg").textContent = pt.type === "accident" ? "事故多発地点 接近中" : "一時停止 接近中";
   document.getElementById("alertDist").textContent = "約 " + Math.round(d) + "m 先";
 }
 function hideAlert() { alertCard.className = ""; }
@@ -472,28 +553,205 @@ function pickVoice() {
   const vs = speechSynthesis.getVoices();
   jaVoice = vs.find(v => v.lang === "ja-JP") || vs.find(v => v.lang && v.lang.startsWith("ja")) || null;
 }
-if ("speechSynthesis" in window) {
-  pickVoice();
-  speechSynthesis.onvoiceschanged = pickVoice;
-}
-
+if ("speechSynthesis" in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
 function unlockVoice() {
   if (!("speechSynthesis" in window)) return;
-  const u = new SpeechSynthesisUtterance("");
-  u.volume = 0;
-  speechSynthesis.speak(u);
+  const u = new SpeechSynthesisUtterance(""); u.volume = 0; speechSynthesis.speak(u);
 }
-
 function speak(text) {
   if (!settings.voice) return;
   if (!("speechSynthesis" in window)) { toast(text); return; }
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = "ja-JP";
-  if (jaVoice) u.voice = jaVoice;
-  u.rate = 1.0;
-  u.volume = 1.0;
+  u.lang = "ja-JP"; if (jaVoice) u.voice = jaVoice;
+  u.rate = 1.0; u.volume = 1.0;
   speechSynthesis.speak(u);
+}
+
+/* ==================================================
+   CSV取り込み(ストリーミング処理・Shift_JIS対応)
+   ================================================== */
+const statusEl = document.getElementById("importStatus");
+function setStatus(t){ statusEl.textContent = t; }
+
+function inBbox(lat, lng){
+  return lat >= BBOX.latMin && lat <= BBOX.latMax && lng >= BBOX.lngMin && lng <= BBOX.lngMax;
+}
+
+// ファイルを分割して1行ずつ処理(巨大CSVでもメモリを圧迫しない)
+async function streamLines(file, onLine, onProgress) {
+  const CHUNK = 4 * 1024 * 1024;
+  // 文字コード判定: 先頭を UTF-8 として厳密デコードできれば UTF-8、失敗なら Shift_JIS
+  let enc = "utf-8";
+  try {
+    const head = await file.slice(0, 65536).arrayBuffer();
+    new TextDecoder("utf-8", { fatal: true }).decode(head.byteLength > 8 ? head.slice(0, head.byteLength - 4) : head);
+  } catch(e) { enc = "shift_jis"; }
+  const decoder = new TextDecoder(enc);
+  let leftover = "";
+  for (let offset = 0; offset < file.size; offset += CHUNK) {
+    const buf = await file.slice(offset, offset + CHUNK).arrayBuffer();
+    const text = leftover + decoder.decode(buf, { stream: true });
+    const lines = text.split(/\r?\n/);
+    leftover = lines.pop();
+    for (const line of lines) onLine(line);
+    if (onProgress) onProgress(Math.min(offset + CHUNK, file.size) / file.size);
+    await new Promise(r => setTimeout(r, 0)); // UIを固まらせない
+  }
+  if (leftover) onLine(leftover);
+}
+
+/* ---- ① JARTIC 交通規制情報CSV → 一時停止(コード63) ---- */
+document.getElementById("btnImportStop").onclick = () => document.getElementById("fileStop").click();
+document.getElementById("fileStop").onchange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  setStatus("読み込み中… 0%");
+  const grid = {};                        // 重複除去用(約11m格子)
+  imported.forEach(p => { if (p.type === "stop") grid[gridKey(p.lat, p.lng)] = 1; });
+  const found = [];
+  const coordPair = /(1[23][0-9]\.\d+)[ 　]+([23][0-9]\.\d+)|([23][0-9]\.\d+)[ 　]+(1[23][0-9]\.\d+)/;
+
+  try {
+    await streamLines(file, (line) => {
+      if (found.length >= MAX_IMPORT) return;
+      // 種別コード63(一時停止)を含む行のみ対象
+      const cells = line.split(",").map(c => c.replace(/^["']|["']$/g, "").trim());
+      if (!cells.some((c, i) => i < 8 && c === "63")) return;
+      // 都道府県コードが先頭にある形式なら鳥取(31)以外を除外
+      const first = Number(cells[0]);
+      if (Number.isInteger(first) && first >= 1 && first <= 47 && first !== 31) return;
+      // 座標(「経度 緯度」または「緯度 経度」の空白区切り)を抽出
+      const m = line.match(coordPair);
+      if (!m) return;
+      let lng, lat;
+      if (m[1] !== undefined) { lng = parseFloat(m[1]); lat = parseFloat(m[2]); }
+      else { lat = parseFloat(m[3]); lng = parseFloat(m[4]); }
+      if (!inBbox(lat, lng)) return;
+      const key = gridKey(lat, lng);
+      if (grid[key]) return;
+      grid[key] = 1;
+      found.push({ id: "j" + key, type: "stop", lat, lng });
+    }, (p) => setStatus("読み込み中… " + Math.round(p * 100) + "%"));
+  } catch(err) {
+    setStatus("読み込みに失敗しました: " + err.message);
+    e.target.value = ""; return;
+  }
+
+  let added = 0;
+  for (const pt of found) {
+    if (deletedIds[pt.id]) continue;
+    imported.push(pt); drawPoint(pt); added++;
+  }
+  saveImported(); updateCounts();
+  setStatus(added > 0
+    ? "✅ 鳥取県の一時停止 " + added + "件を取り込みました"
+    : "対象データが見つかりませんでした。CSVの種類をご確認ください(交通規制情報のCSVが必要です)");
+  if (added > 0 && found.length) map.setView([found[0].lat, found[0].lng], 12);
+  e.target.value = "";
+};
+
+function gridKey(lat, lng){ return Math.round(lat * 10000) + "_" + Math.round(lng * 10000); }
+
+/* ---- ② 警察庁 事故統計CSV(本票) → 2件以上の地点を事故多発扱い ---- */
+document.getElementById("btnImportAcc").onclick = () => document.getElementById("fileAcc").click();
+document.getElementById("fileAcc").onchange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  setStatus("読み込み中… 0%");
+  let latCol = -1, lngCol = -1, headerDone = false;
+  const cellCount = {};   // 約100m格子: 件数と座標合計
+
+  try {
+    await streamLines(file, (line) => {
+      const cells = line.split(",").map(c => c.replace(/^["']|["']$/g, "").trim());
+      if (!headerDone) {
+        headerDone = true;
+        cells.forEach((c, i) => {
+          if (latCol < 0 && c.includes("緯度")) latCol = i;
+          if (lngCol < 0 && c.includes("経度")) lngCol = i;
+        });
+        if (latCol >= 0 && lngCol >= 0) return; // ヘッダー行として消費
+        // ヘッダーに見出しが無ければ、この行もデータとして続行(下のフォールバックで処理)
+      }
+      let lat = NaN, lng = NaN;
+      if (latCol >= 0 && lngCol >= 0) {
+        lat = dmsToDeg(cells[latCol], 2);
+        lng = dmsToDeg(cells[lngCol], 3);
+      } else {
+        // フォールバック: 度分秒形式(9〜10桁の数値)のペアを探す
+        for (let i = 0; i < cells.length - 1; i++) {
+          const a = dmsToDeg(cells[i], 2), b = dmsToDeg(cells[i + 1], 3);
+          if (!isNaN(a) && !isNaN(b) && a > 20 && a < 46 && b > 122 && b < 154) { lat = a; lng = b; break; }
+        }
+      }
+      if (isNaN(lat) || isNaN(lng) || !inBbox(lat, lng)) return;
+      const key = Math.round(lat * 1000) + "_" + Math.round(lng * 1000); // 約100m格子
+      if (!cellCount[key]) cellCount[key] = { n: 0, sLat: 0, sLng: 0 };
+      cellCount[key].n++; cellCount[key].sLat += lat; cellCount[key].sLng += lng;
+    }, (p) => setStatus("読み込み中… " + Math.round(p * 100) + "%"));
+  } catch(err) {
+    setStatus("読み込みに失敗しました: " + err.message);
+    e.target.value = ""; return;
+  }
+
+  const have = {};
+  imported.forEach(p => have[p.id] = 1);
+  let added = 0, total = 0;
+  for (const key in cellCount) {
+    const c = cellCount[key];
+    total += c.n;
+    if (c.n < 2) continue;  // 2件以上発生している地点のみ「事故多発」
+    const id = "a" + key;
+    if (have[id] || deletedIds[id]) continue;
+    const pt = { id, type: "accident", lat: c.sLat / c.n, lng: c.sLng / c.n, n: c.n };
+    imported.push(pt); drawPoint(pt); added++;
+  }
+  saveImported(); updateCounts();
+  setStatus(total > 0
+    ? "✅ 鳥取県内の事故 " + total + "件を分析\n2件以上発生した " + added + "地点を事故多発地点として登録しました"
+    : "対象データが見つかりませんでした。警察庁の本票CSVかご確認ください");
+  e.target.value = "";
+};
+
+// 度分秒パック形式(例: 353012345 = 35度30分12.345秒)→ 十進度
+function dmsToDeg(s, degDigits) {
+  if (!s || !/^\d{8,10}$/.test(s)) return NaN;
+  const deg = Number(s.slice(0, degDigits));
+  const min = Number(s.slice(degDigits, degDigits + 2));
+  const sec = Number(s.slice(degDigits + 2, degDigits + 4));
+  const ms  = Number(s.slice(degDigits + 4) || "0") / Math.pow(10, s.length - degDigits - 4);
+  if (min >= 60 || sec >= 60) return NaN;
+  return deg + min / 60 + (sec + ms) / 3600;
+}
+
+/* ---- ③ 共有データの書き出し ---- */
+document.getElementById("btnExport").onclick = () => {
+  const data = { version: 1, exported: new Date().toISOString(), points: imported.concat(points) };
+  const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "spots-data.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast("spots-data.json を保存しました");
+};
+
+/* ---- ④ 取込データの削除 ---- */
+document.getElementById("btnClearImport").onclick = () => {
+  if (!imported.length) { toast("取込データはありません"); return; }
+  if (!confirm("取り込んだ公式データ(" + imported.length + "件)を削除しますか?\n(手動登録の地点は残ります)")) return;
+  imported.forEach(p => { const m = markers[p.id]; if (m) { map.removeLayer(m); delete markers[p.id]; } });
+  imported = []; deletedIds = {};
+  saveImported(); saveDeleted(); updateCounts();
+  setStatus(""); toast("取込データを削除しました");
+};
+
+function updateCounts() {
+  const s = imported.filter(p => p.type === "stop").length;
+  const a = imported.filter(p => p.type === "accident").length;
+  document.getElementById("importCounts").textContent =
+    "現在: 取込 一時停止 " + s + "件 / 事故多発 " + a + "件 / 手動 " + points.length + "件";
 }
 
 /* ============ 設定パネル ============ */
@@ -510,7 +768,6 @@ document.querySelectorAll("#distChips .chip").forEach(c => {
     saveSettings();
   };
 });
-
 const btnVoice = document.getElementById("btnVoice");
 function updateVoiceBtn() {
   btnVoice.textContent = settings.voice ? "ON" : "OFF";
@@ -518,25 +775,21 @@ function updateVoiceBtn() {
 }
 btnVoice.onclick = () => {
   settings.voice = !settings.voice;
-  updateVoiceBtn();
-  saveSettings();
-  if (settings.voice) { unlockVoice(); }
+  updateVoiceBtn(); saveSettings();
+  if (settings.voice) unlockVoice();
 };
-
 document.getElementById("btnTestVoice").onclick = () => {
   unlockVoice();
   const bak = settings.voice; settings.voice = true;
   speak("音声テストです。この先、一時停止があります。必ず止まってください。");
   settings.voice = bak;
 };
-
 document.getElementById("btnClearAll").onclick = () => {
-  if (!points.length) { toast("登録された地点はありません"); return; }
-  if (confirm("登録した全ての地点(" + points.length + "件)を削除しますか?")) {
-    Object.values(markers).forEach(m => map.removeLayer(m));
-    markers = {}; points = []; announced = {};
-    save();
-    toast("全地点を削除しました");
+  if (!points.length) { toast("手動登録された地点はありません"); return; }
+  if (confirm("手動登録した地点(" + points.length + "件)を削除しますか?\n(取り込んだ公式データは残ります)")) {
+    points.forEach(p => { const m = markers[p.id]; if (m) { map.removeLayer(m); delete markers[p.id]; } });
+    points = []; save(); updateCounts();
+    toast("手動地点を削除しました");
   }
 };
 
@@ -547,13 +800,14 @@ function toast(msg) {
   t.textContent = msg;
   t.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 3000);
 }
 
 /* ============ 初期化 ============ */
-load();
-if (points.length === 0) {
-  setTimeout(() => toast("下のボタンを押して地図をタップ → 地点を登録できます"), 800);
+loadAll();
+loadSharedData();
+if (points.length === 0 && imported.length === 0) {
+  setTimeout(() => toast("⚙️設定から公式データを取り込めます"), 800);
 }
 </script>
 </body>
