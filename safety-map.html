@@ -612,14 +612,19 @@ document.getElementById("fileStop").onchange = async (e) => {
   const found = [];
   const coordPair = /(1[23][0-9]\.\d+)[ 　]+([23][0-9]\.\d+)|([23][0-9]\.\d+)[ 　]+(1[23][0-9]\.\d+)/;
   let codeIdx = -1, coordIdx = -1, headerChecked = false;
+  let wrongStopFile = null;
 
   try {
     await streamLines(file, (line) => {
-      if (found.length >= MAX_IMPORT) return;
+      if (found.length >= MAX_IMPORT || wrongStopFile) return;
       const cells = line.split(",").map(c => c.replace(/^["']|["']$/g, "").trim());
       // 1行目がヘッダーなら列位置を特定(拡張版標準フォーマット K_2.1 対応)
       if (!headerChecked) {
         headerChecked = true;
+        if (line.includes("本票番号") || line.includes("事故内容")) {
+          wrongStopFile = "これは警察庁の事故CSVです。\nJARTICの交通規制情報CSV(鳥取県警_◯◯.csv)を選んでください";
+          return;
+        }
         if (line.includes("規制種別コード") || line.includes("経度緯度")) {
           cells.forEach((c, i) => {
             if (codeIdx < 0 && c.includes("共通規制種別コード")) codeIdx = i;
@@ -652,6 +657,8 @@ document.getElementById("fileStop").onchange = async (e) => {
     e.target.value = ""; return;
   }
 
+  if (wrongStopFile) { setStatus("⚠️ " + wrongStopFile); e.target.value = ""; return; }
+
   let added = 0;
   for (const pt of found) {
     if (deletedIds[pt.id]) continue;
@@ -674,13 +681,20 @@ document.getElementById("fileAcc").onchange = async (e) => {
   if (!file) return;
   setStatus("読み込み中… 0%");
   let latCol = -1, lngCol = -1, headerDone = false;
+  let wrongFile = null;
   const cellCount = {};   // 約100m格子: 件数と座標合計
 
   try {
     await streamLines(file, (line) => {
+      if (wrongFile) return;
       const cells = line.split(",").map(c => c.replace(/^["']|["']$/g, "").trim());
       if (!headerDone) {
         headerDone = true;
+        // ファイル種別チェック: JARTICの規制CSVを選んでいたら中断
+        if (line.includes("規制場所") || line.includes("共通規制種別")) {
+          wrongFile = "これはJARTIC(交通規制情報)のCSVです。\n警察庁の本票CSV(honhyo_◯◯.csv)を選んでください";
+          return;
+        }
         cells.forEach((c, i) => {
           if (latCol < 0 && c.includes("緯度")) latCol = i;
           if (lngCol < 0 && c.includes("経度")) lngCol = i;
@@ -692,7 +706,8 @@ document.getElementById("fileAcc").onchange = async (e) => {
       if (latCol >= 0 && lngCol >= 0) {
         lat = dmsToDeg(cells[latCol], 2);
         lng = dmsToDeg(cells[lngCol], 3);
-      } else {
+      }
+      if (isNaN(lat) || isNaN(lng)) {
         // フォールバック: 度分秒形式(9〜10桁の数値)のペアを探す
         for (let i = 0; i < cells.length - 1; i++) {
           const a = dmsToDeg(cells[i], 2), b = dmsToDeg(cells[i + 1], 3);
@@ -709,6 +724,8 @@ document.getElementById("fileAcc").onchange = async (e) => {
     e.target.value = ""; return;
   }
 
+  if (wrongFile) { setStatus("⚠️ " + wrongFile); e.target.value = ""; return; }
+
   const have = {};
   imported.forEach(p => have[p.id] = 1);
   let added = 0, total = 0;
@@ -724,7 +741,7 @@ document.getElementById("fileAcc").onchange = async (e) => {
   saveImported(); updateCounts();
   setStatus(total > 0
     ? "✅ 鳥取県内の事故 " + total + "件を分析\n2件以上発生した " + added + "地点を事故多発地点として登録しました"
-    : "対象データが見つかりませんでした。警察庁の本票CSVかご確認ください");
+    : "鳥取県内の事故データが見つかりませんでした。\n警察庁の本票CSV(honhyo_◯◯.csv)を選んだかご確認ください");
   e.target.value = "";
 };
 
