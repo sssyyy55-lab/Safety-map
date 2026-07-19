@@ -68,6 +68,17 @@
   #modeBanner.accident{display:flex;background:var(--yellow);color:var(--asphalt);}
   #modeBanner.stop{display:flex;background:var(--red);color:#fff;}
 
+  /* 現在地に戻すボタン(追従が外れたときだけ表示) */
+  #btnFollow{
+    position:absolute;right:12px;bottom:76px;z-index:1100;
+    display:none;align-items:center;gap:6px;
+    padding:10px 16px;border:none;border-radius:999px;cursor:pointer;
+    background:var(--blue);color:#fff;font-family:inherit;
+    font-size:13px;font-weight:800;letter-spacing:.03em;
+    box-shadow:0 4px 14px rgba(0,0,0,.5);
+  }
+  #btnFollow.show{display:flex;}
+
   /* ===== マーカー(標識デザイン) ===== */
   .sign-accident{
     width:34px;height:34px;background:var(--yellow);
@@ -219,6 +230,7 @@
 
 <div id="map">
   <div id="modeBanner"></div>
+  <button id="btnFollow">📍 中央に戻す</button>
   <div id="alertCard">
     <div class="icon" id="alertIcon"></div>
     <div>
@@ -300,6 +312,7 @@ let meMarker = null, meCircle = null;
 let announced = {};
 let settings = { dist: 100, voice: true };
 let firstFix = true;
+let follow = true;   // GPS追跡中、自分を画面中央に保つ
 
 /* ============ 地図 ============ */
 const map = L.map("map", { zoomControl: false, preferCanvas: true }).setView([35.5011, 134.2351], 13); // 鳥取市
@@ -457,10 +470,26 @@ const gpsStatus = document.getElementById("gpsStatus");
 const gpsStatusText = document.getElementById("gpsStatusText");
 btnGps.onclick = () => { if (watchId != null) stopGps(); else startGps(); };
 
+// 地図を手で動かしたら追従を一時停止し、「中央に戻す」ボタンを表示
+const btnFollow = document.getElementById("btnFollow");
+map.on("dragstart", () => {
+  if (watchId != null && follow) {
+    follow = false;
+    btnFollow.classList.add("show");
+  }
+});
+btnFollow.onclick = () => {
+  follow = true;
+  btnFollow.classList.remove("show");
+  if (meMarker) map.setView(meMarker.getLatLng(), map.getZoom(), { animate: true });
+};
+
 function startGps() {
   if (!navigator.geolocation) { toast("この端末はGPSに対応していません"); return; }
   unlockVoice();
   firstFix = true;
+  follow = true;
+  btnFollow.classList.remove("show");
   watchId = navigator.geolocation.watchPosition(onPos, onGpsError, {
     enableHighAccuracy: true, maximumAge: 2000, timeout: 15000
   });
@@ -472,6 +501,7 @@ function startGps() {
 function stopGps() {
   if (watchId != null) navigator.geolocation.clearWatch(watchId);
   watchId = null;
+  btnFollow.classList.remove("show");
   btnGps.classList.remove("active");
   btnGps.innerHTML = '<span class="ico">📍</span>GPS開始';
   gpsStatus.classList.remove("on");
@@ -494,6 +524,7 @@ function onPos(pos) {
     meCircle.setLatLng([lat, lng]).setRadius(acc);
   }
   if (firstFix) { map.setView([lat, lng], 16); firstFix = false; }
+  else if (follow) { map.setView([lat, lng], map.getZoom(), { animate: true }); }
   checkProximity(lat, lng);
 }
 
