@@ -398,12 +398,14 @@ function drawPoint(pt) {
   const isImported = pt.id.startsWith("j") || pt.id.startsWith("a");
   if (isImported) {
     // 取込地点: 軽量な円マーカー(数千件でも軽い)
+    // 事故地点は件数が多いほど大きく表示(1件=小、2件以上=大)
+    const r = pt.type === "stop" ? 6 : (pt.n >= 2 ? 9 : 5.5);
     layer = L.circleMarker([pt.lat, pt.lng], {
       renderer: canvasRenderer,
-      radius: pt.type === "stop" ? 6 : 8,
+      radius: r,
       color: "#1A1D21", weight: 1.5,
       fillColor: pt.type === "stop" ? "#E03131" : "#FFC400",
-      fillOpacity: 0.9
+      fillOpacity: pt.type === "stop" ? 0.9 : (pt.n >= 2 ? 0.95 : 0.75)
     }).addTo(map);
   } else {
     layer = L.marker([pt.lat, pt.lng], { icon: makeIcon(pt.type) }).addTo(map);
@@ -560,9 +562,14 @@ function checkProximity(lat, lng) {
 
 function announce(pt, d) {
   const dTxt = "およそ" + roundDist(d) + "メートル先、";
-  const msg = pt.type === "accident"
-    ? dTxt + "事故多発地点です。速度を落として、ご注意ください。"
-    : dTxt + "一時停止があります。必ず止まってください。";
+  let msg;
+  if (pt.type === "accident") {
+    msg = (pt.n >= 2)
+      ? dTxt + "事故多発地点です。速度を落として、ご注意ください。"
+      : dTxt + "過去に事故が発生した地点です。ご注意ください。";
+  } else {
+    msg = dTxt + "一時停止があります。必ず止まってください。";
+  }
   speak(msg);
   if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
 }
@@ -573,7 +580,10 @@ const alertCard = document.getElementById("alertCard");
 function showAlert(pt, d) {
   alertCard.className = pt.type;
   document.getElementById("alertIcon").textContent = pt.type === "accident" ? "⚠️" : "🛑";
-  document.getElementById("alertMsg").textContent = pt.type === "accident" ? "事故多発地点 接近中" : "一時停止 接近中";
+  document.getElementById("alertMsg").textContent =
+    pt.type === "accident"
+      ? (pt.n >= 2 ? "事故多発地点 接近中" : "事故発生地点 接近中")
+      : "一時停止 接近中";
   document.getElementById("alertDist").textContent = "約 " + Math.round(d) + "m 先";
 }
 function hideAlert() { alertCard.className = ""; }
@@ -759,11 +769,11 @@ document.getElementById("fileAcc").onchange = async (e) => {
 
   const have = {};
   imported.forEach(p => have[p.id] = 1);
-  let added = 0, total = 0;
+  let added = 0, total = 0, multi = 0;
   for (const key in cellCount) {
     const c = cellCount[key];
     total += c.n;
-    if (c.n < 2) continue;  // 2件以上発生している地点のみ「事故多発」
+    if (c.n >= 2) multi++;
     const id = "a" + key;
     if (have[id] || deletedIds[id]) continue;
     const pt = { id, type: "accident", lat: c.sLat / c.n, lng: c.sLng / c.n, n: c.n };
@@ -771,7 +781,7 @@ document.getElementById("fileAcc").onchange = async (e) => {
   }
   saveImported(); updateCounts();
   setStatus(total > 0
-    ? "✅ 鳥取県内の事故 " + total + "件を分析\n2件以上発生した " + added + "地点を事故多発地点として登録しました"
+    ? "✅ 鳥取県内の事故 " + total + "件を分析\n事故地点 " + added + "か所を登録しました(うち2件以上の多発地点 " + multi + "か所は大きい丸で表示)"
     : "鳥取県内の事故データが見つかりませんでした。\n警察庁の本票CSV(honhyo_◯◯.csv)を選んだかご確認ください");
   e.target.value = "";
 };
