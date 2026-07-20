@@ -263,6 +263,10 @@
     <label style="margin:0">音声アナウンス</label>
     <button class="chip sel" id="btnVoice">ON</button>
   </div>
+  <div class="set-row voice-toggle">
+    <label style="margin:0">進行方向の前方のみ通知<br><span style="font-weight:400;font-size:10px;">(OFFにすると周囲全方向に通知)</span></label>
+    <button class="chip sel" id="btnAhead">ON</button>
+  </div>
   <div class="set-actions" style="margin-bottom:16px;">
     <button id="btnTestVoice">🔊 音声テスト</button>
     <button id="btnClearAll">🗑 手動地点を削除</button>
@@ -310,9 +314,11 @@ let addMode = null;
 let watchId = null;
 let meMarker = null, meCircle = null;
 let announced = {};
-let settings = { dist: 100, voice: true };
+let settings = { dist: 100, voice: true, ahead: true };  // ahead: 前方の地点のみ通知
 let firstFix = true;
 let follow = true;   // GPS追跡中、自分を画面中央に保つ
+let heading = null;  // 進行方向(度: 北=0, 東=90)
+let prevPos = null;
 
 /* ============ 地図 ============ */
 const map = L.map("map", { zoomControl: false, preferCanvas: true }).setView([35.5011, 134.2351], 13); // 鳥取市
@@ -365,6 +371,7 @@ function loadAll() {
     c.classList.toggle("sel", Number(c.dataset.d) === settings.dist);
   });
   updateVoiceBtn();
+  updateAheadBtn();
   updateCounts();
 }
 function valid(pt){ return pt && pt.id && typeof pt.lat === "number" && typeof pt.lng === "number" && (pt.type === "stop" || pt.type === "accident"); }
@@ -527,6 +534,17 @@ function onPos(pos) {
   }
   if (firstFix) { map.setView([lat, lng], 16); firstFix = false; }
   else if (follow) { map.setView([lat, lng], map.getZoom(), { animate: true }); }
+
+  // 進行方向の推定: GPSのheading(移動中のみ有効)、無ければ直前位置からの方角
+  const spd = pos.coords.speed;
+  if (pos.coords.heading != null && !isNaN(pos.coords.heading) && spd != null && spd > 1.5) {
+    heading = pos.coords.heading;
+  } else if (prevPos) {
+    const moved = distanceM(prevPos.lat, prevPos.lng, lat, lng);
+    if (moved > 8) heading = bearingDeg(prevPos.lat, prevPos.lng, lat, lng);
+  }
+  prevPos = { lat, lng };
+
   checkProximity(lat, lng);
 }
 
@@ -536,6 +554,23 @@ function distanceM(lat1, lng1, lat2, lng2) {
   const dLat = (lat2 - lat1) * rad, dLng = (lng2 - lng1) * rad;
   const a = Math.sin(dLat/2)**2 + Math.cos(lat1*rad) * Math.cos(lat2*rad) * Math.sin(dLng/2)**2;
   return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+// 2地点間の方角(度: 北=0, 東=90)
+function bearingDeg(lat1, lng1, lat2, lng2) {
+  const rad = Math.PI / 180;
+  const y = Math.sin((lng2 - lng1) * rad) * Math.cos(lat2 * rad);
+  const x = Math.cos(lat1 * rad) * Math.sin(lat2 * rad) -
+            Math.sin(lat1 * rad) * Math.cos(lat2 * rad) * Math.cos((lng2 - lng1) * rad);
+  return (Math.atan2(y, x) / rad + 360) % 360;
+}
+
+// 地点が進行方向の前方(±60度)にあるか
+function isAhead(lat, lng, pt) {
+  if (!settings.ahead || heading == null) return true; // 方向不明時は全方向に通知
+  const b = bearingDeg(lat, lng, pt.lat, pt.lng);
+  const diff = Math.abs(((b - heading + 540) % 360) - 180);
+  return diff <= 60;
 }
 
 /* ============ 接近チェック ============ */
@@ -550,6 +585,7 @@ function checkProximity(lat, lng) {
     }
     const d = distanceM(lat, lng, pt.lat, pt.lng);
     if (d <= settings.dist) {
+      if (!isAhead(lat, lng, pt)) continue;  // 前方以外は通知しない
       if (!announced[pt.id]) { announced[pt.id] = true; announce(pt, d); }
       if (d < nearestD) { nearestD = d; nearest = pt; }
     } else if (d > settings.dist * 1.5) {
@@ -849,6 +885,18 @@ btnVoice.onclick = () => {
   settings.voice = !settings.voice;
   updateVoiceBtn(); saveSettings();
   if (settings.voice) unlockVoice();
+};
+
+const btnAhead = document.getElementById("btnAhead");
+function updateAheadBtn() {
+  btnAhead.textContent = settings.ahead ? "ON" : "OFF";
+  btnAhead.classList.toggle("sel", settings.ahead);
+}
+btnAhead.onclick = () => {
+  settings.ahead = !settings.ahead;
+  updateAheadBtn(); saveSettings();
+  announced = {};
+  toast(settings.ahead ? "前方(±60度)の地点のみ通知します" : "周囲全方向の地点に通知します");
 };
 document.getElementById("btnTestVoice").onclick = () => {
   unlockVoice();
