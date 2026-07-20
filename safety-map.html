@@ -273,6 +273,10 @@
     <label style="margin:0">進行方向の前方のみ通知<br><span style="font-weight:400;font-size:10px;">(OFFにすると周囲全方向に通知)</span></label>
     <button class="chip sel" id="btnAhead">ON</button>
   </div>
+  <div class="set-row voice-toggle">
+    <label style="margin:0">進行方向を上に表示<br><span style="font-weight:400;font-size:10px;">(カーナビ式。OFFで北が上)</span></label>
+    <button class="chip sel" id="btnHeadup">ON</button>
+  </div>
   <div class="set-actions" style="margin-bottom:16px;">
     <button id="btnTestVoice">🔊 音声テスト</button>
     <button id="btnClearAll">🗑 手動地点を削除</button>
@@ -299,6 +303,7 @@
 <div id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet-rotate@0.2.8/dist/leaflet-rotate.min.js"></script>
 <script>
 "use strict";
 
@@ -320,14 +325,15 @@ let addMode = null;
 let watchId = null;
 let meMarker = null, meCircle = null;
 let announced = {};
-let settings = { dist: 100, voice: true, ahead: true };  // ahead: 前方の地点のみ通知
+let settings = { dist: 100, voice: true, ahead: true, headup: true };  // headup: 進行方向を上に表示
 let firstFix = true;
 let follow = true;   // GPS追跡中、自分を画面中央に保つ
 let heading = null;  // 進行方向(度: 北=0, 東=90)
 let prevPos = null;
+let lastBearing = 0;
 
 /* ============ 地図 ============ */
-const map = L.map("map", { zoomControl: false, preferCanvas: true }).setView([35.5011, 134.2351], 13); // 鳥取市
+const map = L.map("map", { zoomControl: false, preferCanvas: true, rotate: true, rotateControl: false, touchRotate: false, bearing: 0 }).setView([35.5011, 134.2351], 13); // 鳥取市
 L.control.zoom({ position: "topright" }).addTo(map);
 L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
@@ -378,6 +384,7 @@ function loadAll() {
   });
   updateVoiceBtn();
   updateAheadBtn();
+  updateHeadupBtn();
   updateCounts();
 }
 function valid(pt){ return pt && pt.id && typeof pt.lat === "number" && typeof pt.lng === "number" && (pt.type === "stop" || pt.type === "accident"); }
@@ -513,9 +520,26 @@ function startGps() {
   gpsStatus.classList.add("on");
   gpsStatusText.textContent = "GPS 取得中…";
 }
+// 地図の回転(ヘディングアップ)を適用
+function applyHeadUp() {
+  if (typeof map.setBearing !== "function") return;  // 回転ライブラリ未読込時は何もしない
+  if (settings.headup && watchId != null && heading != null) {
+    const target = -heading;
+    // 小刻みな揺れを防ぐため、3度以上変わったときだけ回転
+    if (Math.abs(((target - lastBearing + 540) % 360) - 180) >= 3) {
+      map.setBearing(target);
+      lastBearing = target;
+    }
+  } else if (!settings.headup && lastBearing !== 0) {
+    map.setBearing(0);
+    lastBearing = 0;
+  }
+}
+
 function stopGps() {
   if (watchId != null) navigator.geolocation.clearWatch(watchId);
   watchId = null;
+  if (typeof map.setBearing === "function") { map.setBearing(0); lastBearing = 0; }
   btnFollow.classList.remove("show");
   btnGps.classList.remove("active");
   btnGps.innerHTML = '<span class="ico">📍</span>GPS開始';
@@ -550,6 +574,8 @@ function onPos(pos) {
     if (moved > 8) heading = bearingDeg(prevPos.lat, prevPos.lng, lat, lng);
   }
   prevPos = { lat, lng };
+
+  applyHeadUp();
 
   checkProximity(lat, lng);
 }
@@ -903,6 +929,19 @@ btnAhead.onclick = () => {
   updateAheadBtn(); saveSettings();
   announced = {};
   toast(settings.ahead ? "前方(±60度)の地点のみ通知します" : "周囲全方向の地点に通知します");
+};
+
+const btnHeadup = document.getElementById("btnHeadup");
+function updateHeadupBtn() {
+  btnHeadup.textContent = settings.headup ? "ON" : "OFF";
+  btnHeadup.classList.toggle("sel", settings.headup);
+}
+btnHeadup.onclick = () => {
+  settings.headup = !settings.headup;
+  updateHeadupBtn(); saveSettings();
+  if (!settings.headup && typeof map.setBearing === "function") { map.setBearing(0); lastBearing = 0; }
+  else applyHeadUp();
+  toast(settings.headup ? "進行方向が上になるよう地図が回転します" : "北が上の表示に戻しました");
 };
 document.getElementById("btnTestVoice").onclick = () => {
   unlockVoice();
