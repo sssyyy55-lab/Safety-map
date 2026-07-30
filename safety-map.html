@@ -20,6 +20,7 @@
     --red:#E03131;
     --blue:#2B6CB0;
     --green:#2F9E44;
+    --purple:#7048E8;
     --muted:#8A9099;
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -73,6 +74,7 @@
   }
   #modeBanner.accident{display:flex;background:var(--yellow);color:var(--asphalt);}
   #modeBanner.stop{display:flex;background:var(--red);color:#fff;}
+  #modeBanner.speed{display:flex;background:var(--purple);color:#fff;}
 
   /* 現在地に戻すボタン(追従が外れたときだけ表示) */
   #btnFollow{
@@ -104,6 +106,13 @@
     position:absolute;top:-33px;left:-14px;width:28px;
     text-align:center;color:#fff;font-size:9px;font-weight:800;letter-spacing:.05em;
   }
+  .sign-speed{
+    width:34px;height:34px;background:var(--purple);
+    border-radius:50%;border:2.5px solid #fff;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 3px 8px rgba(0,0,0,.5);
+  }
+  .sign-speed span{font-size:16px;line-height:1;}
   .me-dot{
     width:18px;height:18px;border-radius:50%;
     background:#4DA3FF;border:3px solid #fff;
@@ -131,32 +140,35 @@
   @keyframes slideUp{from{transform:translateY(20px);opacity:0;}}
   #alertCard.accident{display:flex;background:var(--yellow);color:var(--asphalt);}
   #alertCard.stop{display:flex;background:var(--red);color:#fff;}
+  #alertCard.speed{display:flex;background:var(--purple);color:#fff;}
   #alertCard .icon{font-size:30px;}
   #alertCard .msg{font-size:15px;font-weight:800;line-height:1.35;}
   #alertCard .dist{font-size:12px;font-weight:700;opacity:.85;}
 
   /* ===== 下部コントロール ===== */
   nav{
-    background:var(--asphalt);padding:10px 12px calc(10px + env(safe-area-inset-bottom));
-    display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;
+    background:var(--asphalt);padding:10px 10px calc(10px + env(safe-area-inset-bottom));
+    display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:6px;
     z-index:1200;position:relative;border-top:1px solid #2C3138;
   }
   nav button{
     border:none;border-radius:12px;cursor:pointer;
-    padding:10px 4px;font-family:inherit;
-    font-size:11px;font-weight:800;letter-spacing:.02em;
-    display:flex;flex-direction:column;align-items:center;gap:4px;
+    padding:9px 2px;font-family:inherit;
+    font-size:10px;font-weight:800;letter-spacing:.01em;
+    display:flex;flex-direction:column;align-items:center;gap:3px;
     transition:transform .08s;
   }
   nav button:active{transform:scale(.95);}
-  nav button .ico{font-size:19px;line-height:1;}
+  nav button .ico{font-size:18px;line-height:1;}
   #btnAccident{background:var(--asphalt-2);color:var(--yellow);border:1.5px solid #4a3d10;}
   #btnAccident.active{background:var(--yellow);color:var(--asphalt);border-color:var(--yellow);}
   #btnStop{background:var(--asphalt-2);color:#FF9B9B;border:1.5px solid #4a2022;}
   #btnStop.active{background:var(--red);color:#fff;border-color:var(--red);}
+  #btnSpeed{background:var(--asphalt-2);color:#C9B3FF;border:1.5px solid #3a2d5c;}
+  #btnSpeed.active{background:var(--purple);color:#fff;border-color:var(--purple);}
   #btnGps{background:var(--asphalt-2);color:#8FC7FF;border:1.5px solid #1f3a55;}
   #btnGps.active{background:var(--blue);color:#fff;border-color:var(--blue);}
-  #btnSettings{background:var(--asphalt-2);color:var(--muted);border:1.5px solid #333940;padding-left:14px;padding-right:14px;}
+  #btnSettings{background:var(--asphalt-2);color:var(--muted);border:1.5px solid #333940;padding-left:10px;padding-right:10px;}
 
   /* ===== 設定パネル ===== */
   #settings{
@@ -249,6 +261,7 @@
 <nav>
   <button id="btnAccident"><span class="ico">⚠️</span>事故多発</button>
   <button id="btnStop"><span class="ico">🛑</span>一時停止</button>
+  <button id="btnSpeed"><span class="ico">📷</span>取締り</button>
   <button id="btnGps"><span class="ico">📍</span>GPS開始</button>
   <button id="btnSettings"><span class="ico">⚙️</span>設定</button>
 </nav>
@@ -349,6 +362,12 @@ function makeIcon(type) {
       html: '<div class="sign-accident"><span>⚠️</span></div>'
     });
   }
+  if (type === "speed") {
+    return L.divIcon({
+      className: "", iconSize: [40, 40], iconAnchor: [20, 20],
+      html: '<div class="sign-speed"><span>📷</span></div>'
+    });
+  }
   return L.divIcon({
     className: "", iconSize: [42, 36], iconAnchor: [21, 36],
     html: '<div class="sign-stop"><span>止まれ</span></div>'
@@ -387,7 +406,7 @@ function loadAll() {
   updateHeadupBtn();
   updateCounts();
 }
-function valid(pt){ return pt && pt.id && typeof pt.lat === "number" && typeof pt.lng === "number" && (pt.type === "stop" || pt.type === "accident"); }
+function valid(pt){ return pt && pt.id && typeof pt.lat === "number" && typeof pt.lng === "number" && (pt.type === "stop" || pt.type === "accident" || pt.type === "speed"); }
 
 /* ============ 共有データ(spots-data.json)の自動読込 ============ */
 async function loadSharedData() {
@@ -430,7 +449,9 @@ function drawPoint(pt) {
   } else {
     layer = L.marker([pt.lat, pt.lng], { icon: makeIcon(pt.type) }).addTo(map);
   }
-  const label = pt.type === "accident" ? "⚠️ 事故多発地点" : "🛑 一時停止";
+  const label = pt.type === "accident" ? "⚠️ 事故多発地点"
+              : pt.type === "speed" ? "📷 スピード取締り地点"
+              : "🛑 一時停止";
   const sub = pt.id.startsWith("j") ? "出典: JARTIC 交通規制情報"
             : pt.id.startsWith("a") ? "出典: 警察庁 事故統計" + (pt.n ? "(" + pt.n + "件)" : "")
             : "手動登録";
@@ -468,23 +489,30 @@ map.on("click", e => {
     type: addMode, lat: e.latlng.lat, lng: e.latlng.lng
   };
   points.push(pt); drawPoint(pt); save(); updateCounts();
-  toast(addMode === "accident" ? "⚠️ 事故多発地点を登録しました" : "🛑 一時停止を登録しました");
+  const msg = addMode === "accident" ? "⚠️ 事故多発地点を登録しました"
+            : addMode === "speed" ? "📷 スピード取締り地点を登録しました"
+            : "🛑 一時停止を登録しました";
+  toast(msg);
 });
 
 /* ============ モード切替 ============ */
 const btnAccident = document.getElementById("btnAccident");
 const btnStop = document.getElementById("btnStop");
+const btnSpeed = document.getElementById("btnSpeed");
 const banner = document.getElementById("modeBanner");
 function setMode(mode) {
   addMode = (addMode === mode) ? null : mode;
   btnAccident.classList.toggle("active", addMode === "accident");
   btnStop.classList.toggle("active", addMode === "stop");
+  btnSpeed.classList.toggle("active", addMode === "speed");
   banner.className = addMode || "";
   if (addMode === "accident") banner.textContent = "地図をタップ → ⚠️ 事故多発地点を登録";
   if (addMode === "stop") banner.textContent = "地図をタップ → 🛑 一時停止を登録";
+  if (addMode === "speed") banner.textContent = "地図をタップ → 📷 スピード取締り地点を登録";
 }
 btnAccident.onclick = () => setMode("accident");
 btnStop.onclick = () => setMode("stop");
+btnSpeed.onclick = () => setMode("speed");
 
 /* ============ GPS ============ */
 const btnGps = document.getElementById("btnGps");
@@ -635,6 +663,8 @@ function announce(pt, d) {
     msg = (pt.n >= 2)
       ? dTxt + "事故多発地点です。速度を落として、ご注意ください。"
       : dTxt + "過去に事故が発生した地点です。ご注意ください。";
+  } else if (pt.type === "speed") {
+    msg = dTxt + "スピード取り締まりの地点です。速度にご注意ください。";
   } else {
     msg = dTxt + "一時停止があります。必ず止まってください。";
   }
@@ -647,11 +677,12 @@ function roundDist(d) { return d < 30 ? "20" : String(Math.round(d / 10) * 10); 
 const alertCard = document.getElementById("alertCard");
 function showAlert(pt, d) {
   alertCard.className = pt.type;
-  document.getElementById("alertIcon").textContent = pt.type === "accident" ? "⚠️" : "🛑";
+  document.getElementById("alertIcon").textContent =
+    pt.type === "accident" ? "⚠️" : pt.type === "speed" ? "📷" : "🛑";
   document.getElementById("alertMsg").textContent =
-    pt.type === "accident"
-      ? (pt.n >= 2 ? "事故多発地点 接近中" : "事故発生地点 接近中")
-      : "一時停止 接近中";
+    pt.type === "accident" ? (pt.n >= 2 ? "事故多発地点 接近中" : "事故発生地点 接近中")
+    : pt.type === "speed" ? "スピード取締り 接近中"
+    : "一時停止 接近中";
   document.getElementById("alertDist").textContent = "約 " + Math.round(d) + "m 先";
 }
 function hideAlert() { alertCard.className = ""; }
@@ -890,8 +921,10 @@ document.getElementById("btnClearImport").onclick = () => {
 function updateCounts() {
   const s = imported.filter(p => p.type === "stop").length;
   const a = imported.filter(p => p.type === "accident").length;
+  const mSpeed = points.filter(p => p.type === "speed").length;
+  const mOther = points.length - mSpeed;
   document.getElementById("importCounts").textContent =
-    "現在: 取込 一時停止 " + s + "件 / 事故多発 " + a + "件 / 手動 " + points.length + "件";
+    "現在: 取込 一時停止 " + s + "件 / 事故多発 " + a + "件 / 手動(事故・停止) " + mOther + "件 / 手動(取締り) " + mSpeed + "件";
 }
 
 /* ============ 設定パネル ============ */
