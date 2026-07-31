@@ -201,6 +201,21 @@
   .voice-toggle{display:flex;align-items:center;justify-content:space-between;}
   .voice-toggle .chip{flex:0 0 88px;}
 
+  /* 外部情報リンク(X等) */
+  .link-box{
+    border:1.5px solid #3A4048;border-radius:12px;padding:12px;margin-bottom:16px;
+    background:var(--asphalt);
+  }
+  .link-box h3{font-size:13px;font-weight:800;margin-bottom:8px;}
+  .link-box a.ext-btn{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    width:100%;padding:11px;border-radius:10px;text-decoration:none;
+    font-family:inherit;font-size:13px;font-weight:800;text-align:center;
+    background:#000;color:#fff;border:1.5px solid #333;
+    box-sizing:border-box;line-height:1.3;
+  }
+  .link-box p{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5;}
+
   /* データ取込セクション */
   .import-box{
     border:1.5px solid #3A4048;border-radius:12px;padding:12px;margin-bottom:14px;
@@ -293,6 +308,17 @@
   <div class="set-actions" style="margin-bottom:16px;">
     <button id="btnTestVoice">🔊 音声テスト</button>
     <button id="btnClearAll">🗑 手動地点を削除</button>
+  </div>
+
+  <div class="link-box">
+    <h3>𝕏 最新の災害・事故情報を見る</h3>
+    <a class="ext-btn" href="https://x.com/tottori_bousai" target="_blank" rel="noopener" style="margin-bottom:8px;">
+      🏛️ 【公式】防災トリピー(鳥取県防災・危機管理情報) を開く
+    </a>
+    <a class="ext-btn" href="https://x.com/Gt8VUlzRG7buafO" target="_blank" rel="noopener">
+      🚨 災害火災画像速報ニュース２ を開く
+    </a>
+    <p>タップするとXアプリ(またはブラウザ)で該当アカウントが開きます。自動通知ではありません。安全な場所に停車してからご確認ください。</p>
   </div>
 
   <div class="import-box">
